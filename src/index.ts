@@ -1,5 +1,3 @@
-import isNumber from 'lodash/isNumber';
-
 /**
  * The base for the whole library. Run predicate on the value.
  * If predicate returns true, returns the value as is. Otherwise, throws
@@ -48,17 +46,20 @@ const noop = () => {}
  * Runs a decoding function, and if all the validations succeed, returns
  * the value. If something fails, falls back to another value (and optionally
  * logs the error).
- * @param make {() => T} The function that generates the expected type (and throws on invalid data)
- * @param fallback {U} The fallback value (probably different from T)
- * @param options {CatchOptions} 
+ * @param input {In} The input data
+ * @param decoder {D => T} The function that transforms input to the expected
+ * resulting type (and throws upon meeting invalid data)
+ * @param fallback {Fb} The fallback value (probably different from T)
+ * @param options {CatchOptions}
  */
-export function orBe<T, U>(
-	make: () => T,
-	fallback: U,
+export function decode<In, Out, Fb>(
+	input: In,
+	decoder: (data: In) => Out,
+	fallback: Fb,
 	{ logger = noop }: CatchOptions = {}
-): T | U {
+): Out | Fb {
 	try {
-		return make()
+		return decoder(input)
 	} catch(e) {
 		/*
 			If we ever add a custom error, we should replace all the
