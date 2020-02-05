@@ -73,36 +73,51 @@ export function decode<In, Out, Fb>(
   }
 }
 
-// todo: fallback()
-// something like orNull, simpler than the whole decode
-
 type ArrayOptions = {
   invalidateAll?: boolean;
   minLength?: number;
+  minLengthError?: string;
+  notAnArrayError?: string;
 };
 
 export function beArray<Out>(
   input: unknown,
-  elDecoder: (el: unknown) => Out,
-  { invalidateAll, minLength = Infinity }: ArrayOptions = {}
+  elementDecoder: (el: unknown) => Out,
+  {
+    invalidateAll,
+    minLength = 0,
+    minLengthError,
+    notAnArrayError
+  }: ArrayOptions = {}
 ): Out[] | null {
-  if (!isArray(input)) return null; // todo: customize
+  if (!isArray(input))
+    throw TypeError(
+      notAnArrayError || `${printValueInfo(input)} is not an array`
+    );
 
   const result = [];
   for (const el of input) {
     try {
-      result.push(elDecoder(el));
+      result.push(elementDecoder(el));
     } catch (e) {
       if (invalidateAll) throw e;
       // otherwise, don’t push the result, but swallow the exception,
-      // effectively invalidating the single element, but not the whole array
-		// todo: but shouldn’t `decode` log those errors? then every
-		//  `orNull` and `fallback` should rethrow or smth
-		//  Or, we should introduce verbosity/severity
-		//  Or, decode should be a logging point, but fallback should mean it’s
-		//  ok to fall back
+      // effectively invalidating a single element, but not the whole array
     }
   }
 
-  return result.length < minLength ? result : null;
+  if (result.length < minLength) {
+    throw Error(
+      minLengthError ||
+        `Array length (${result.length}) less than specified (${minLength})`
+    );
+  }
+  return result;
+}
+
+function printValueInfo(value: any) {
+  const valType = typeof value;
+  const lq = valType === 'string' ? '“' : '';
+  const rq = valType === 'string' ? '”' : '';
+  return `${lq + value + rq} (${typeof value})`
 }
