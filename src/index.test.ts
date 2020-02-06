@@ -1,118 +1,135 @@
-import { isNumber, isString } from "lodash";
+import { isNumber, isString } from 'lodash'
 
-import { be, beArray, beTrue, decode } from "./index";
+import {be, decodeArray, decode, makeDecoder} from './index'
 
-test("be", () => {
-  const numError = "Not a number!";
+test('be', () => {
+  const numError = 'Not a number!'
 
-  expect(be(20, isNumber, numError)).toBe(20);
-  expect(() => be("20", isNumber, numError)).toThrow(numError);
-});
+  expect(be(20, isNumber, numError)).toBe(20)
+  expect(() => be('20', isNumber, numError)).toThrow(numError)
+})
 
-test("beTrue", () => {
-  const fiverError = "Not equals to 5.5!";
-  const eq = (m: number) => (n: number) => n === m;
+test('beArray: happy path', () => {
+  expect(decodeArray([1, false, 'Bob'], el => el)).toStrictEqual([1, false, 'Bob'])
+})
 
-  expect(beTrue(5.5, eq(5.5), fiverError)).toBe(5.5);
-  expect(() => beTrue(5.7, eq(5.5), fiverError)).toThrow(fiverError);
-});
+test('beArray: filtering', () => {
+  expect(
+    decodeArray(['a', 0, 'b', 1, 'c'], s => {
+      if (typeof s !== 'string') throw Error('!')
+      return { s }
+    })
+  ).toStrictEqual([{ s: 'a' }, { s: 'b' }, { s: 'c' }])
+})
 
-test("decode: validation ok", () => {
+test('beArray: invalidate all', () => {
+  expect(() =>
+    decodeArray(
+      ['a', 0, 'b', 1, 'c'],
+      x => {
+        if (typeof x !== 'string') throw Error('!!!')
+        return x
+      },
+      { invalidateAll: true }
+    )
+  ).toThrow('!!!')
+})
+
+test('beArray: not an array', () => {
+  expect(() => {
+    decodeArray('[]', x => x)
+  }).toThrow('“[]” (string) is not an array')
+
+  expect(() => {
+    decodeArray(3.14, x => x)
+  }).toThrow('3.14 (number) is not an array')
+
+  expect(() => {
+    decodeArray('[]', x => x, {
+      notAnArrayError: 'Not quite an array one would expect'
+    })
+  }).toThrow('Not quite an array one would expect')
+})
+
+test('beArray: checkLength', () => {
+  expect(() =>
+    decodeArray(
+      [false, false, false, false, true],
+      x => {
+        if (!x) throw Error('!!!')
+        return x
+      },
+      { minLength: 2, minLengthError: 'Way too short!' }
+    )
+  ).toThrow('Way too short!')
+
+  expect(() =>
+    decodeArray(
+      [false, false, false, false, true],
+      x => {
+        if (!x) throw Error('!!!')
+        return x
+      },
+      { minLength: 2 }
+    )
+  ).toThrow('Array length (1) less than specified (2)')
+})
+
+test('decode: validation ok', () => {
   expect(
     decode(
-      ["foo", "bar"],
+      ['foo', 'bar'],
       ([foo, bar]) => ({
-        foo: be(foo, isString, "Failed"),
-        bar: beTrue(bar, s => s === "bar", "Failed")
+        foo: be(foo, isString, 'Failed'),
+        bar: be(bar, isString, 'Failed')
       }),
       null
     )
   ).toStrictEqual({
-    foo: "foo",
-    bar: "bar"
-  });
-});
+    foo: 'foo',
+    bar: 'bar'
+  })
+})
 
-test("decode: falling back", () => {
-  const logger = jest.fn();
+test('decode: falling back', () => {
+  const logger = jest.fn()
 
   expect(
     decode(
       void 0,
       () => ({
-        foo: be("foo", isString, "Failed"),
-        bar: beTrue("bar", s => s === "foo", "Failed")
+        foo: be('foo', isString, 'Failed'),
+        bar: be('bar', isNumber, 'Failed')
       }),
       null,
       { logger }
     )
-  ).toBe(null);
+  ).toBe(null)
 
-  expect(logger).toBeCalledWith(expect.objectContaining({ message: "Failed" }));
-});
+  expect(logger).toBeCalledWith(expect.objectContaining({ message: 'Failed' }))
+})
 
-test("beArray: happy path", () => {
-  expect(beArray([1, false, "Bob"], el => el)).toStrictEqual([1, false, "Bob"]);
-});
-
-test("beArray: filtering", () => {
+test('decode: successful nested array', () => {
   expect(
-    beArray(["a", 0, "b", 1, "c"], s => {
-      if (typeof s !== "string") throw Error("!");
-      return { s };
-    })
-  ).toStrictEqual([{ s: "a" }, { s: "b" }, { s: "c" }]);
-});
-
-test("beArray: invalidate all", () => {
-  expect(() =>
-    beArray(
-      ["a", 0, "b", 1, "c"],
-      x => {
-        if (typeof x !== "string") throw Error("!!!");
-        return x;
-      },
-      { invalidateAll: true }
+    decode(
+      { id: 3, animals: ['Cat', 'Dog', 'Siren'] },
+      input => ({
+        id: be(input.id, isNumber, 'Id should be a number'),
+        animalNames: decodeArray(
+          input.animals,
+          makeDecoder(
+            isString,
+            'animal should have strings of characters as their names'
+          )
+            // fixme: maybe we should add a fallback parameter after all
+            //  I mean, the only way to catch array validation errors here
+            //  is `decode`, and wrapping `decodeArray` (a catching point in its
+            //  own right) in `decode` eels rather weird
+            //
+            //  maybe we should have `invalidate: 'element' | 'array' | 'parent'
+        )
+      }),
+      null
     )
-  ).toThrow("!!!");
-});
-
-test("beArray: not an array", () => {
-  expect(() => {
-    beArray("[]", x => x);
-  }).toThrow("“[]” (string) is not an array");
-
-  expect(() => {
-    beArray(3.14, x => x);
-  }).toThrow("3.14 (number) is not an array");
-
-  expect(() => {
-    beArray("[]", x => x, {
-      notAnArrayError: "Not quite an array one would expect"
-    });
-  }).toThrow("Not quite an array one would expect");
-});
-
-test("beArray: checkLength", () => {
-  expect(() =>
-    beArray(
-      [false, false, false, false, true],
-      x => {
-        if (!x) throw Error("!!!");
-        return x;
-      },
-      { minLength: 2, minLengthError: "Way too short!" }
-    )
-  ).toThrow("Way too short!");
-
-  expect(() =>
-    beArray(
-      [false, false, false, false, true],
-      x => {
-        if (!x) throw Error("!!!");
-        return x;
-      },
-      { minLength: 2 }
-    )
-  ).toThrow("Array length (1) less than specified (2)");
-});
+  ).toStrictEqual({ id: 3, animalNames: ['Cat', 'Dog', 'Siren'] })
+})

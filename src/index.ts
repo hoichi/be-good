@@ -1,4 +1,4 @@
-import isArray from "lodash/isArray";
+import isArray from 'lodash/isArray'
 
 /**
  * The base for the whole library. Run predicate on the value.
@@ -15,34 +15,31 @@ export function be<T>(
   predicate: (a: any) => a is T,
   errorMessage: string
 ): T {
-  if (predicate(val)) return val;
-
-  throw new TypeError(errorMessage);
+  /**
+   * @param val {any} The value itself.
+   */
+  return makeDecoder(predicate, errorMessage)(val);
 }
 
-/**
- * Checks for a condition that is not a type assertion. Ergo cannot
- * narrow done the value type and returns the same type it gets.
- * If you want to assert and narrow down types, use `be`.
- * @param val {T} The value itself.
- * @param predicate: {(a: T) => boolean}.
- * @param errorMessage {string}
- */
-export function beTrue<T>(
-  val: T,
-  predicate: (a: T) => boolean,
+export function makeDecoder<T>(
+  predicate: (a: any) => a is T,
   errorMessage: string
-): T {
-  if (predicate(val)) return val;
+): (val: any) => T {
+  /**
+   * @param val {any} The value itself.
+   */
+  return function decoderFunctionExn(val: any): T {
+    if (predicate(val)) return val
 
-  throw new Error(errorMessage);
+    throw new TypeError(errorMessage)
+  }
 }
 
 type CatchOptions = {
-  logger?: (e: Error) => void;
-};
+  logger?: (e: Error) => void
+}
 
-const noop = () => {};
+const noop = () => {}
 
 /**
  * Runs a decoding function, and if all the validations succeed, returns
@@ -61,26 +58,26 @@ export function decode<In, Out, Fb>(
   { logger = noop }: CatchOptions = {}
 ): Out | Fb {
   try {
-    return decoder(input);
+    return decoder(input)
   } catch (e) {
     /* If we ever add a custom error, we should replace all the
 	   `new TypeError` invocations. But frankly, why not catch all
 	   exceptions indiscriminately, even those not foreseen
 	   by a programmer.
 	*/
-    logger(e);
-    return fallback;
+    logger(e)
+    return fallback
   }
 }
 
 type ArrayOptions = {
-  invalidateAll?: boolean;
-  minLength?: number;
-  minLengthError?: string;
-  notAnArrayError?: string;
-};
+  invalidateAll?: boolean
+  minLength?: number
+  minLengthError?: string
+  notAnArrayError?: string
+}
 
-export function beArray<Out>(
+export function decodeArray<Out>(
   input: unknown,
   elementDecoder: (el: unknown) => Out,
   {
@@ -93,14 +90,14 @@ export function beArray<Out>(
   if (!isArray(input))
     throw TypeError(
       notAnArrayError || `${printValueInfo(input)} is not an array`
-    );
+    )
 
-  const result = [];
+  const result = []
   for (const el of input) {
     try {
-      result.push(elementDecoder(el));
+      result.push(elementDecoder(el))
     } catch (e) {
-      if (invalidateAll) throw e;
+      if (invalidateAll) throw e
       // otherwise, don’t push the result, but swallow the exception,
       // effectively invalidating a single element, but not the whole array
     }
@@ -110,14 +107,14 @@ export function beArray<Out>(
     throw Error(
       minLengthError ||
         `Array length (${result.length}) less than specified (${minLength})`
-    );
+    )
   }
-  return result;
+  return result
 }
 
 function printValueInfo(value: any) {
-  const valType = typeof value;
-  const lq = valType === 'string' ? '“' : '';
-  const rq = valType === 'string' ? '”' : '';
+  const valType = typeof value
+  const lq = valType === 'string' ? '“' : ''
+  const rq = valType === 'string' ? '”' : ''
   return `${lq + value + rq} (${typeof value})`
 }
