@@ -68,7 +68,10 @@ export function decode<In, Out, Fb>(
   }
 }
 
-type ArrayOptions = {
+// todo: flatten
+//  ( too complicated for adding new stuff
+//    and not too consistent with ObjectDecodeOptions
+type DecodeArrayOptions = {
   /** What to invalidate on errors */
   invalidate?: {
     element?: 'single' | 'all'
@@ -79,6 +82,7 @@ type ArrayOptions = {
   notAnArrayError?: string
 }
 
+// todo: jsdoc
 export function decodeArray<Out, Fb>(
   input: unknown,
   elementDecoder: (el: unknown) => Out,
@@ -88,7 +92,7 @@ export function decodeArray<Out, Fb>(
     minLength = 0,
     minLengthError,
     notAnArrayError
-  }: ArrayOptions = {}
+  }: DecodeArrayOptions = {}
 ): Out[] | Fb {
   const invalidateArray = (errorMaker: () => Error) => {
     switch (array) {
@@ -130,9 +134,52 @@ export function decodeArray<Out, Fb>(
   return result
 }
 
+type DecodeObjectOptions = {
+  onFailure?: 'fallback' | 'propagate'
+  notAnObjectErrMsg?: string
+}
+
+// todo: jsdoc
+// todo: test
+export function decodeObject<Out extends object, Fb>(
+  input: unknown,
+  objectDecoder: (obj: Record<string, unknown>) => Out,
+  fallback: Fb,
+  { onFailure = 'fallback', notAnObjectErrMsg }: DecodeObjectOptions = {}
+): Out | Fb {
+  if (!isObject(input)) {
+    switch (onFailure) {
+      case 'propagate':
+        throw notAnObjectErrMsg ||
+          TypeError(printValueInfo(input) + ' is not an object')
+      case 'fallback':
+      default:
+        return fallback
+    }
+  }
+
+  try {
+    return objectDecoder(input as Record<string, unknown>)
+  } catch (e) {
+    switch (onFailure) {
+      case 'propagate':
+        throw e
+      case 'fallback':
+      default:
+        return fallback
+    }
+  }
+}
+
 function printValueInfo(value: any) {
   const valType = typeof value
   const lq = valType === 'string' ? '“' : ''
   const rq = valType === 'string' ? '”' : ''
   return `${lq + value + rq} (${typeof value})`
+}
+
+function isObject(value: unknown) {
+  return !!value && typeof value === 'object'
+  // Unlike lodash, we consider tyoeof value === 'function' a negative
+  // (getting a function after deserialization is probably a bug anyway)
 }
