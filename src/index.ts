@@ -1,5 +1,3 @@
-import isArray from 'lodash/isArray'
-
 /**
  * The base for the whole library. Run predicate on the value.
  * If predicate returns true, returns the value as is. Otherwise, throws
@@ -18,7 +16,7 @@ export function be<T>(
   /**
    * @param val {any} The value itself.
    */
-  return makeDecoder(predicate, errorMessage)(val);
+  return makeDecoder(predicate, errorMessage)(val)
 }
 
 export function makeDecoder<T>(
@@ -71,44 +69,64 @@ export function decode<In, Out, Fb>(
 }
 
 type ArrayOptions = {
-  invalidateAll?: boolean
+  /** What to invalidate on errors */
+  invalidate?: {
+    element?: 'single' | 'all'
+    array?: 'fallback' | 'throw'
+  }
   minLength?: number
   minLengthError?: string
   notAnArrayError?: string
 }
 
-export function decodeArray<Out>(
+export function decodeArray<Out, Fb>(
   input: unknown,
   elementDecoder: (el: unknown) => Out,
+  fallback: Fb,
   {
-    invalidateAll,
+    invalidate: { element = 'single', array = 'fallback' } = {},
     minLength = 0,
     minLengthError,
     notAnArrayError
   }: ArrayOptions = {}
-): Out[] | null {
-  if (!isArray(input))
-    throw TypeError(
-      notAnArrayError || `${printValueInfo(input)} is not an array`
-    )
-
-  const result = []
-  for (const el of input) {
-    try {
-      result.push(elementDecoder(el))
-    } catch (e) {
-      if (invalidateAll) throw e
-      // otherwise, don’t push the result, but swallow the exception,
-      // effectively invalidating a single element, but not the whole array
+): Out[] | Fb {
+  const invalidateArray = (errorMaker: () => Error) => {
+    switch (array) {
+      case 'fallback':
+        return fallback
+      case 'throw':
+        throw errorMaker()
     }
   }
 
-  if (result.length < minLength) {
-    throw Error(
-      minLengthError ||
-        `Array length (${result.length}) less than specified (${minLength})`
+  if (!Array.isArray(input))
+    return invalidateArray(() =>
+      TypeError(notAnArrayError || `${printValueInfo(input)} is not an array`)
     )
+
+  const result = []
+  for (const el of input as unknown[] /* TS fails to see fallbackOrThrow as
+   an early exit*/) {
+    try {
+      result.push(elementDecoder(el))
+    } catch (e) {
+      switch (element) {
+        case 'single':
+          break // swallow the error, move on to the next element
+        case 'all':
+          return invalidateArray(() => e)
+      }
+    }
   }
+
+  if (result.length < minLength)
+    return invalidateArray(() =>
+      Error(
+        minLengthError ||
+          `Array length (${result.length}) less than specified (${minLength})`
+      )
+    )
+
   return result
 }
 

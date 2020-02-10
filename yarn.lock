@@ -391,11 +391,6 @@
   dependencies:
     "@babel/types" "^7.3.0"
 
-"@types/check-types@^7.3.1":
-  version "7.3.1"
-  resolved "https://registry.yarnpkg.com/@types/check-types/-/check-types-7.3.1.tgz#81c2eb6b9866655b149a5eb490a758266b841eb6"
-  integrity sha512-ngdPEVdU7HMFoDWBibpBB2T59WKhn832O19s1xWhbbPVC/FoMJSetj/8V68p6L28oeU2wPSVfeP4GX0AmxLKUw==
-
 "@types/color-name@^1.1.1":
   version "1.1.1"
   resolved "https://registry.yarnpkg.com/@types/color-name/-/color-name-1.1.1.tgz#1c1261bbeaa10a8055bbc5d8ab84b7b2afc846a0"
@@ -818,11 +813,6 @@ chalk@^3.0.0:
   dependencies:
     ansi-styles "^4.1.0"
     supports-color "^7.1.0"
-
-check-types@^11.1.2:
-  version "11.1.2"
-  resolved "https://registry.yarnpkg.com/check-types/-/check-types-11.1.2.tgz#86a7c12bf5539f6324eb0e70ca8896c0e38f3e2f"
-  integrity sha512-tzWzvgePgLORb9/3a0YenggReLKAIb2owL03H2Xdoe5pKcUyWRSEQ8xfCar8t2SIAuEDwtmx2da1YB52YuHQMQ==
 
 ci-info@^2.0.0:
   version "2.0.0"
@@ -3264,6 +3254,11 @@ tr46@^1.0.1:
   integrity sha1-qLE/1r/SSJUZZ0zN5VujaTtwbQk=
   dependencies:
     punycode "^2.1.0"
+
+ts-exhaustive-check@^1.0.0:
+  version "1.0.0"
+  resolved "https://registry.yarnpkg.com/ts-exhaustive-check/-/ts-exhaustive-check-1.0.0.tgz#8048c81eccd3b4da45ebd10f01529ad0be7924c7"
+  integrity sha1-gEjIHszTtNpF69EPAVKa0L55JMc=
 
 ts-jest@^25.1.0:
   version "25.1.0"

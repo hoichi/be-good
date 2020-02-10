@@ -1,6 +1,6 @@
 import { isNumber, isString } from 'lodash'
 
-import {be, decodeArray, decode, makeDecoder} from './index'
+import { be, decodeArray, decode, makeDecoder } from './index'
 
 test('be', () => {
   const numError = 'Not a number!'
@@ -10,19 +10,27 @@ test('be', () => {
 })
 
 test('beArray: happy path', () => {
-  expect(decodeArray([1, false, 'Bob'], el => el)).toStrictEqual([1, false, 'Bob'])
+  expect(decodeArray([1, false, 'Bob'], el => el, null)).toStrictEqual([
+    1,
+    false,
+    'Bob'
+  ])
 })
 
 test('beArray: filtering', () => {
   expect(
-    decodeArray(['a', 0, 'b', 1, 'c'], s => {
-      if (typeof s !== 'string') throw Error('!')
-      return { s }
-    })
+    decodeArray(
+      ['a', 0, 'b', 1, 'c'],
+      s => {
+        if (typeof s !== 'string') throw Error('!')
+        return { s }
+      },
+      null
+    )
   ).toStrictEqual([{ s: 'a' }, { s: 'b' }, { s: 'c' }])
 })
 
-test('beArray: invalidate all', () => {
+test('beArray: invalidate parent', () => {
   expect(() =>
     decodeArray(
       ['a', 0, 'b', 1, 'c'],
@@ -30,28 +38,29 @@ test('beArray: invalidate all', () => {
         if (typeof x !== 'string') throw Error('!!!')
         return x
       },
-      { invalidateAll: true }
+      null,
+      { invalidate: { element: 'all', array: 'throw' } }
     )
   ).toThrow('!!!')
 })
 
 test('beArray: not an array', () => {
   expect(() => {
-    decodeArray('[]', x => x)
+    decodeArray('[]', x => x, null, {
+      invalidate: { element: 'all', array: 'throw' }
+    })
   }).toThrow('“[]” (string) is not an array')
 
   expect(() => {
-    decodeArray(3.14, x => x)
+    decodeArray(3.14, x => x, null, {
+      invalidate: { element: 'all', array: 'throw' }
+    })
   }).toThrow('3.14 (number) is not an array')
 
-  expect(() => {
-    decodeArray('[]', x => x, {
-      notAnArrayError: 'Not quite an array one would expect'
-    })
-  }).toThrow('Not quite an array one would expect')
+  expect(decodeArray(false, x => x, 77)).toBe(77)
 })
 
-test('beArray: checkLength', () => {
+test('beArray: check length and throw', () => {
   expect(() =>
     decodeArray(
       [false, false, false, false, true],
@@ -59,20 +68,28 @@ test('beArray: checkLength', () => {
         if (!x) throw Error('!!!')
         return x
       },
-      { minLength: 2, minLengthError: 'Way too short!' }
+      null,
+      {
+        minLength: 2,
+        minLengthError: 'Way too short!',
+        invalidate: { element: 'single', array: 'throw' }
+      }
     )
   ).toThrow('Way too short!')
+})
 
-  expect(() =>
+test('beArray: check length and fall back', () => {
+  expect(
     decodeArray(
       [false, false, false, false, true],
       x => {
         if (!x) throw Error('!!!')
         return x
       },
+      null,
       { minLength: 2 }
     )
-  ).toThrow('Array length (1) less than specified (2)')
+  ).toBe(null)
 })
 
 test('decode: validation ok', () => {
@@ -120,13 +137,8 @@ test('decode: successful nested array', () => {
           makeDecoder(
             isString,
             'animal should have strings of characters as their names'
-          )
-            // fixme: maybe we should add a fallback parameter after all
-            //  I mean, the only way to catch array validation errors here
-            //  is `decode`, and wrapping `decodeArray` (a catching point in its
-            //  own right) in `decode` eels rather weird
-            //
-            //  maybe we should have `invalidate: 'element' | 'array' | 'parent'
+          ),
+          null
         )
       }),
       null
