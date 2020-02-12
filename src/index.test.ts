@@ -1,6 +1,6 @@
 import { isNumber, isString } from 'lodash'
 
-import { be, decodeArray, decode, makeDecoder } from './index'
+import { be, decode, decodeArray, decodeObject, makeDecoder } from './index'
 
 test('be', () => {
   const numError = 'Not a number!'
@@ -9,7 +9,7 @@ test('be', () => {
   expect(() => be('20', isNumber, numError)).toThrow(numError)
 })
 
-test('beArray: happy path', () => {
+test('decodeArray: happy path', () => {
   expect(decodeArray([1, false, 'Bob'], el => el, null)).toStrictEqual([
     1,
     false,
@@ -17,34 +17,21 @@ test('beArray: happy path', () => {
   ])
 })
 
-test('beArray: filtering', () => {
+test('decodeArray: filtering', () => {
   expect(
-    decodeArray(
-      ['a', 0, 'b', 1, 'c'],
-      s => {
-        if (typeof s !== 'string') throw Error('!')
-        return { s }
-      },
-      null
-    )
-  ).toStrictEqual([{ s: 'a' }, { s: 'b' }, { s: 'c' }])
+    decodeArray(['a', 0, 'b', 1, 'c'], makeDecoder(isString, '!'), null)
+  ).toStrictEqual(['a', 'b', 'c'])
 })
 
-test('beArray: invalidate parent', () => {
+test('decodeArray: invalidate parent', () => {
   expect(() =>
-    decodeArray(
-      ['a', 0, 'b', 1, 'c'],
-      x => {
-        if (typeof x !== 'string') throw Error('!!!')
-        return x
-      },
-      null,
-      { invalidate: { element: 'all', array: 'throw' } }
-    )
+    decodeArray(['a', 0, 'b', 1, 'c'], makeDecoder(isString, '!!!'), null, {
+      invalidate: { element: 'all', array: 'throw' }
+    })
   ).toThrow('!!!')
 })
 
-test('beArray: not an array', () => {
+test('decodeArray: not an array', () => {
   expect(() => {
     decodeArray('[]', x => x, null, {
       invalidate: { element: 'all', array: 'throw' }
@@ -60,7 +47,7 @@ test('beArray: not an array', () => {
   expect(decodeArray(false, x => x, 77)).toBe(77)
 })
 
-test('beArray: check length and throw', () => {
+test('decodeArray: check length and throw', () => {
   expect(() =>
     decodeArray(
       [false, false, false, false, true],
@@ -78,7 +65,7 @@ test('beArray: check length and throw', () => {
   ).toThrow('Way too short!')
 })
 
-test('beArray: check length and fall back', () => {
+test('decodeArray: check length and fall back', () => {
   expect(
     decodeArray(
       [false, false, false, false, true],
@@ -144,4 +131,51 @@ test('decode: successful nested array', () => {
       null
     )
   ).toStrictEqual({ id: 3, animalNames: ['Cat', 'Dog', 'Siren'] })
+})
+
+test('decodeObject: wrong member, fallback', () => {
+  expect(
+    decodeObject(
+      {
+        foo: 'foo',
+        bar: 4
+      },
+      obj => ({
+        foo: be(obj.foo, isString, 'foo should be a string'),
+        bar: be(obj.bar, isString, 'bar should be a string')
+      }),
+      null
+    )
+  ).toBe(null)
+})
+
+test('decodeObject: wrong member, throw', () => {
+  expect(() =>
+    decodeObject(
+      {
+        foo: 'foo',
+        bar: 4
+      },
+      obj => ({
+        foo: be(obj.foo, isString, 'foo should be a string'),
+        bar: be(obj.bar, isString, 'bar should be a string')
+      }),
+      null,
+      { onFailure: 'propagate' }
+    )
+  ).toThrow('bar should be a string')
+})
+
+test('decodeObject: not an object, throw', () => {
+  expect(() =>
+    decodeObject(
+      '{{-}}',
+      obj => ({
+        foo: be(obj.foo, isString, 'foo should be a string'),
+        bar: be(obj.bar, isString, 'bar should be a string')
+      }),
+      null,
+      { onFailure: 'propagate', notAnObjectErrMsg: 'You call that an object?' }
+    )
+  ).toThrow('You call that an object?')
 })
