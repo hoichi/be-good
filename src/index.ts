@@ -71,6 +71,7 @@ export function decode<In, Out, Fb>(
 // todo: flatten
 //  ( too complicated for adding new stuff
 //    and not too consistent with ObjectDecodeOptions
+// todo: jsdoc
 type DecodeArrayOptions = {
   /** What to invalidate on errors */
   invalidate?: {
@@ -82,7 +83,16 @@ type DecodeArrayOptions = {
   notAnArrayError?: string
 }
 
-// todo: jsdoc
+/**
+ * Decodes an array, if it is an array. Runs decoders on its elements.
+ * Catches their errors.
+ * @param input {unknown} The input, hopefully, an array
+ * @param elementDecoder {(el: unknown) => Out} Should decode an element,
+ * returning a value of the expected type, or throw
+ * @param fallback {Fb} Returned is something is wrong with the element.
+ * Note that decodeArray might throw instead, depending on the options
+ * @param options {DecodeArrayOptions}
+ */
 export function decodeArray<Out, Fb>(
   input: unknown,
   elementDecoder: (el: unknown) => Out,
@@ -140,7 +150,6 @@ type DecodeObjectOptions = {
 }
 
 // todo: jsdoc
-// todo: test
 export function decodeObject<Out extends object, Fb>(
   input: unknown,
   objectDecoder: (obj: Record<string, unknown>) => Out,
@@ -170,6 +179,8 @@ export function decodeObject<Out extends object, Fb>(
     }
   }
 }
+
+// todo: manual decoding with be(isArray), be(isObject) and rearranging
 
 function printValueInfo(value: any) {
   const valType = typeof value
