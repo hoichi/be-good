@@ -1,22 +1,46 @@
 import { isNumber, isString } from 'lodash'
 
-import { be, decode, decodeArray, decodeObject, makeDecoder } from './index'
+import { be, fallback, beArrayOf, beObjectOf } from './index'
 
 test('be', () => {
-  const numError = 'Not a number!'
+  expect(be(isNumber, 20)).toBe(20)
+  expect(() => be(isNumber, '20')).toThrow()
 
-  expect(be(20, isNumber, numError)).toBe(20)
-  expect(() => be('20', isNumber, numError)).toThrow(numError)
+  // same but partial
+  const beString = be(isString)
+  expect(() => beString(20)).toThrow()
+  expect(beString('twenty')).toEqual('twenty')
+})
+
+test('fallback basics', () => {
+  const misdecoder = (_: any) => ({
+    foo: be(isString, 'foo'),
+    bar: be(isNumber, 'bar')
+  })
+
+  expect(() => misdecoder(undefined)).toThrow()
+  expect(fallback(misdecoder, 'fell back', undefined)).toBe('fell back')
+  // partial application
+  const decoderWithFallback = fallback(misdecoder, 'fallen supine')
+  expect(decoderWithFallback(undefined)).toBe('fallen supine')
 })
 
 test('decodeArray: happy path', () => {
-  expect(decodeArray([1, false, 'Bob'], el => el, null)).toStrictEqual([
+  expect(beArrayOf(<T>(el: T) => el, {}, [1, false, 'Bob'])).toStrictEqual([
     1,
     false,
     'Bob'
   ])
+
+  const decoder = beArrayOf(<T>(el: T) => el, {})
+  expect(decoder([2, true, 'Cinderella'])).toStrictEqual([
+    2,
+    true,
+    'Cinderella'
+  ])
 })
 
+/*
 test('decodeArray: filtering', () => {
   expect(
     decodeArray(['a', 0, 'b', 1, 'c'], makeDecoder(isString, '!'), null)
@@ -77,40 +101,6 @@ test('decodeArray: check length and fall back', () => {
       { minLength: 2 }
     )
   ).toBe(null)
-})
-
-test('decode: validation ok', () => {
-  expect(
-    decode(
-      ['foo', 'bar'],
-      ([foo, bar]) => ({
-        foo: be(foo, isString, 'Failed'),
-        bar: be(bar, isString, 'Failed')
-      }),
-      null
-    )
-  ).toStrictEqual({
-    foo: 'foo',
-    bar: 'bar'
-  })
-})
-
-test('decode: falling back', () => {
-  const logger = jest.fn()
-
-  expect(
-    decode(
-      void 0,
-      () => ({
-        foo: be('foo', isString, 'Failed'),
-        bar: be('bar', isNumber, 'Failed')
-      }),
-      null,
-      { logger }
-    )
-  ).toBe(null)
-
-  expect(logger).toBeCalledWith(expect.objectContaining({ message: 'Failed' }))
 })
 
 test('decode: successful nested array', () => {
@@ -179,3 +169,4 @@ test('decodeObject: not an object, throw', () => {
     )
   ).toThrow('You call that an object?')
 })
+*/
