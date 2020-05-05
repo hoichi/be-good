@@ -3,8 +3,8 @@ import { isNumber, isString } from 'lodash'
 import { be, fallback, beArrayOf, beObjectOf } from './index'
 
 test('be', () => {
-  expect(be(isNumber, 20)).toBe(20)
-  expect(() => be(isNumber, '20')).toThrow()
+  expect(be(isNumber)(20)).toBe(20)
+  expect(() => be(isNumber)('20')).toThrow()
 
   // same but partial
   const beString = be(isString)
@@ -14,25 +14,17 @@ test('be', () => {
 
 test('fallback basics', () => {
   const misdecoder = (_: any) => ({
-    foo: be(isString, 'foo'),
-    bar: be(isNumber, 'bar')
+    foo: be(isString)('foo'),
+    bar: be(isNumber)('bar')
   })
 
   expect(() => misdecoder(undefined)).toThrow()
-  expect(fallback(misdecoder, 'fell back', undefined)).toBe('fell back')
-  // partial application
-  const decoderWithFallback = fallback(misdecoder, 'fallen supine')
+  const decoderWithFallback = fallback('fallen supine')(misdecoder)
   expect(decoderWithFallback(undefined)).toBe('fallen supine')
 })
 
-test('decodeArray: happy path', () => {
-  expect(beArrayOf(<T>(el: T) => el, {}, [1, false, 'Bob'])).toStrictEqual([
-    1,
-    false,
-    'Bob'
-  ])
-
-  const decoder = beArrayOf(<T>(el: T) => el, {})
+test('beArrayOf: happy path', () => {
+  const decoder = beArrayOf(<T>(el: T) => el)
   expect(decoder([2, true, 'Cinderella'])).toStrictEqual([
     2,
     true,
@@ -40,69 +32,148 @@ test('decodeArray: happy path', () => {
   ])
 })
 
+test('beArrayOf: not an array', () => {
+  expect(() => beArrayOf(be(isString))(null)).toThrow()
+  expect(() => beArrayOf(be(isString))(77)).toThrow()
+  expect(() => beArrayOf(be(isString))('seventy seventeen')).toThrow()
+  expect(() => beArrayOf(be(isString))(true)).toThrow()
+  expect(() => beArrayOf(be(isString))(false)).toThrow()
+  expect(() => beArrayOf(be(isString))({ a: 'a', b: 'boooooo' })).toThrow()
+})
+
+test('beArrayOf: invalid elements', () => {
+  const elDecoder = be(isString)
+
+  // invalidate elements, by default...
+  expect(beArrayOf(elDecoder)(['1', '2', 3])).toStrictEqual(['1', '2'])
+  expect(beArrayOf(elDecoder, {})(['1', '2', 3])).toStrictEqual(['1', '2'])
+  // ...and explicitly
+  expect(
+    beArrayOf(elDecoder, { invalidate: 'element' })(['1', '2', 3])
+  ).toStrictEqual(['1', '2'])
+
+  // invalidate the whole array
+  expect(() =>
+    beArrayOf(elDecoder, { invalidate: 'array' })(['1', '2', 3])
+  ).toThrow()
+})
+
+test('beArrayOf: min length', () => {
+  const elDecoder = be(isNumber)
+
+  // No lower limit by default
+  expect(beArrayOf(elDecoder)(['1', '2', '3'])).toStrictEqual([])
+  expect(beArrayOf(elDecoder, {})([])).toStrictEqual([])
+  // ...and explicitly
+  expect(
+    beArrayOf(elDecoder, { minLength: 1 })(['1', '2', 3, 4])
+  ).toStrictEqual([3, 4])
+  expect(() =>
+    beArrayOf(elDecoder, { minLength: 3 })(['1', '2', 3, 4])
+  ).toThrow()
+
+  // invalidating array beats the length limit
+  // (not that we’re checking the exact error)
+  expect(() =>
+    beArrayOf(elDecoder, { invalidate: 'array', minLength: 1 })(['1', 2, 3])
+  ).toThrow()
+  expect(() =>
+    beArrayOf(elDecoder, { invalidate: 'array', minLength: 100 })(['1', 3, 4])
+  ).toThrow()
+})
+
+test('beObjectOf: happy path', () => {
+  const antoine = {
+    name: 'Tony',
+    age: 44
+  }
+  const personDecoder = beObjectOf({
+    name: be(isString),
+    age: be(isNumber)
+  })
+
+  expect(personDecoder(antoine)).toStrictEqual(antoine)
+  // extra fields are simply ignored
+  expect(
+    personDecoder({
+      ...antoine,
+      hobby: ['tea', 'bonsai'],
+      catsOwned: 1
+    })
+  ).toStrictEqual(antoine)
+})
+
+test('beObjectOf: not an object', () => {
+  const personDecoder = beObjectOf({
+    name: be(isString),
+    age: be(isNumber)
+  })
+
+  expect(() => personDecoder(null)).toThrow()
+  expect(() => personDecoder(77)).toThrow()
+  expect(() => personDecoder('seventy seventeen')).toThrow()
+  expect(() => personDecoder(true)).toThrow()
+  expect(() => personDecoder(false)).toThrow()
+
+  // array _is_ an object (if you’re brave enough)
+  const arr = [1, 2, 'five', { true: false }]
+  // @ts-ignore
+  arr.name = 'Joe'
+  // @ts-ignore
+  arr.age = 33
+  expect(Array.isArray(arr)).toBe(true)
+  expect(personDecoder(arr)).toStrictEqual({ name: 'Joe', age: 33 })
+  expect(() => personDecoder([])).toThrow()
+})
+
+test('beObjectOf: field decoding failure', () => {
+  const bob = {
+    name: 'Bob',
+    age: 37
+  }
+  const constantine = {
+    name: 'Constantine',
+    age: 'of Empires'
+  }
+
+  const numAgeDecoder = beObjectOf({ name: be(isString), age: be(isNumber) })
+  const stringAgeDecoder = beObjectOf({ name: be(isString), age: be(isString) })
+
+  expect(numAgeDecoder(bob)).toStrictEqual(bob)
+  expect(() => numAgeDecoder(constantine)).toThrow()
+
+  expect(() => stringAgeDecoder(bob)).toThrow()
+  expect(stringAgeDecoder(constantine)).toStrictEqual(constantine)
+})
+
+test('beObjectOf: fallback', () => {
+  const bob = {
+    name: 'Bob',
+    age: 37
+  }
+  const constantine = {
+    name: 'Constantine',
+    age: 'of Empires'
+  }
+
+  const numAgeDecoder = beObjectOf({ name: be(isString), age: be(isNumber) })
+  const stringAgeDecoder = beObjectOf({ name: be(isString), age: be(isString) })
+
+  expect(() =>
+    beObjectOf({
+      name: be(isString),
+      age: be(isString)
+    })(bob)
+  ).toThrow()
+  expect(
+    beObjectOf({
+      name: be(isString),
+      age: fallback(0)(be(isString))
+    })(bob)
+  ).toStrictEqual({ name: 'Bob', age: 0 })
+})
+
 /*
-test('decodeArray: filtering', () => {
-  expect(
-    decodeArray(['a', 0, 'b', 1, 'c'], makeDecoder(isString, '!'), null)
-  ).toStrictEqual(['a', 'b', 'c'])
-})
-
-test('decodeArray: invalidate parent', () => {
-  expect(() =>
-    decodeArray(['a', 0, 'b', 1, 'c'], makeDecoder(isString, '!!!'), null, {
-      invalidate: { element: 'all', array: 'throw' }
-    })
-  ).toThrow('!!!')
-})
-
-test('decodeArray: not an array', () => {
-  expect(() => {
-    decodeArray('[]', x => x, null, {
-      invalidate: { element: 'all', array: 'throw' }
-    })
-  }).toThrow('“[]” (string) is not an array')
-
-  expect(() => {
-    decodeArray(3.14, x => x, null, {
-      invalidate: { element: 'all', array: 'throw' }
-    })
-  }).toThrow('3.14 (number) is not an array')
-
-  expect(decodeArray(false, x => x, 77)).toBe(77)
-})
-
-test('decodeArray: check length and throw', () => {
-  expect(() =>
-    decodeArray(
-      [false, false, false, false, true],
-      x => {
-        if (!x) throw Error('!!!')
-        return x
-      },
-      null,
-      {
-        minLength: 2,
-        minLengthError: 'Way too short!',
-        invalidate: { element: 'single', array: 'throw' }
-      }
-    )
-  ).toThrow('Way too short!')
-})
-
-test('decodeArray: check length and fall back', () => {
-  expect(
-    decodeArray(
-      [false, false, false, false, true],
-      x => {
-        if (!x) throw Error('!!!')
-        return x
-      },
-      null,
-      { minLength: 2 }
-    )
-  ).toBe(null)
-})
-
 test('decode: successful nested array', () => {
   expect(
     decode(
