@@ -1,6 +1,6 @@
 import { isNumber, isString } from 'lodash'
 
-import { be, fallback, beArrayOf, beObjectOf } from './index'
+import { be, fallback, beArrayOf, beObject, beObjectOf } from './index'
 
 test('be', () => {
   expect(be(isNumber)(20)).toBe(20)
@@ -151,13 +151,6 @@ test('beObjectOf: fallback', () => {
     name: 'Bob',
     age: 37
   }
-  const constantine = {
-    name: 'Constantine',
-    age: 'of Empires'
-  }
-
-  const numAgeDecoder = beObjectOf({ name: be(isString), age: be(isNumber) })
-  const stringAgeDecoder = beObjectOf({ name: be(isString), age: be(isString) })
 
   expect(() =>
     beObjectOf({
@@ -171,6 +164,20 @@ test('beObjectOf: fallback', () => {
       age: fallback(0)(be(isString))
     })(bob)
   ).toStrictEqual({ name: 'Bob', age: 0 })
+})
+
+test('beObject', () => {
+  expect(() => beObject(null)).toThrow()
+  expect(() => beObject(undefined)).toThrow()
+  expect(() => beObject(22)).toThrow()
+  expect(() => beObject('eleven')).toThrow()
+  expect(() => beObject(() => {})).toThrow()
+
+  // and now something positive
+  expect(beObject({})).toStrictEqual({})
+  expect(
+    beObject({ name: undefined, surname: 'Johnson', 1: 'yes' })
+  ).toStrictEqual({ name: undefined, surname: 'Johnson', 1: 'yes' })
 })
 
 /*

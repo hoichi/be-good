@@ -1,7 +1,7 @@
 {
 	"name": "be-good",
 	"version": "0.1.0",
-	"description": "Simple and flexible data decoding and transformation",
+	"description": "Simple and flexible data decoding",
 	"author": "hoichi <hi@hoichi.io>",
 	"license": "MIT",
 	"keywords": [

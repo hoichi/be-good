@@ -1,16 +1,12 @@
-import curry from 'lodash/fp/curry'
-
 /**
- * The base for the whole library. Run predicate on the value.
- * If predicate returns true, returns the value as is. Otherwise, throws
- * with the given message.
- * If you just want a condition, not a type assertion, use `beTrue`
+ * The base for the whole library. Applies a predicate to the value.
+ * If the predicate yields true, returns the value as is. Otherwise, throws.
  * @param predicate {(a: any) => a is T}. As you can see, the predicate should
  * @param input {unknown} The value itself.
  * assert a type
  */
-export function be<T>(predicate: (a: any) => a is T) {
-  return function decoder(input: unknown): T {
+export function be<T>(predicate: (a: any) => a is T): (u: unknown) => T {
+  return function decoder(input: unknown | T): T {
     if (!predicate(input))
       throw TypeError(`assertion failed on ${printValueInfo(input)}`)
 
@@ -26,8 +22,8 @@ export function be<T>(predicate: (a: any) => a is T) {
  * @return decorator {(In => Out) => In => Out | Fb} The same decoder that,
  * instead of throwing, returns a fallback value
  */
-export function fallback<In, Out, Fb>(fallbackVal: Fb) {
-  return function decorator(decoder: (data: In) => Out) {
+export function fallback<Fb>(fallbackVal: Fb) {
+  return function decorator<In, Out>(decoder: (data: In) => Out) {
     return function decoratedDecoder(input: In): Out | Fb {
       try {
         return decoder(input)
@@ -44,15 +40,26 @@ export function fallback<In, Out, Fb>(fallbackVal: Fb) {
   }
 }
 
-export function beObjectOf<Out extends object, K extends keyof Out>(
-  individualDecoders: Record<K, (fld: unknown) => Out[K]>
-) {
+/**
+ * Just returns an object, if it’s an object. Doesn’t decode fields or anything.
+ * Useful because...
+ * @returns an object typed as {Re== 'stricord<string, unknown>}
+ */
+export const beObject = be(isObject)
+
+type DecodersFor<T> = {
+  [P in keyof T]: (field: unknown) => T[P]
+}
+
+export function beObjectOf<Out>(fieldDecoders: DecodersFor<Out>) {
+  type K = keyof Out
+
   return function objectDecoder(input: unknown): Out {
     if (!isObject(input)) throw new TypeError('Not an object')
 
     const result = {} as Out // getting a bit ahead of ourselves
-    Object.keys(individualDecoders).forEach(key => {
-      result[key as K] = individualDecoders[key as K](
+    Object.keys(fieldDecoders).forEach(key => {
+      result[key as K] = fieldDecoders[key as K](
         (input as Record<K, unknown>)[key as K]
       )
     })
@@ -100,7 +107,7 @@ function printValueInfo(value: any) {
   return `${lq + value + rq} (${typeof value})`
 }
 
-function isObject(value: unknown): value is object {
+function isObject(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === 'object'
   // Unlike lodash, we consider typeof value === 'function' a negative
   // (getting a function after deserialization is probably a bug anyway)
