@@ -1,55 +1,54 @@
 {
-	"name": "be-good",
-	"version": "0.2.0",
-	"description": "Simple and flexible data decoding",
-	"author": "hoichi <hi@hoichi.io>",
-	"license": "MIT",
-	"keywords": [
-		"data",
-		"decoder",
-		"decoding",
-		"typechecking",
-		"typescript"
-	],
-	"repository": {
-		"type": "git",
-		"url": "git+https://github.com/hoichi/be-good.git"
-	},
-	"homepage": "https://github.com/hoichi/be-good.git#readme",
-	"bugs": {
-		"url": "https://github.com/hoichi/be-good.git#readme"
-	},
-	"main": "lib/index.js",
-	"module": "lib.es2015/index.js",
-	"jsnext:main": "lib.es2015/index.js",
-	"typings": "lib/index.d.ts",
-	"files": [
-		"dist",
-		"lib"
-	],
-	"scripts": {
-		"build": "npm run build:commonjs && npm run build:es2015 && npm run build:umd",
-		"build:commonjs": "./node_modules/.bin/tsc -P cfg/tsconfig.commonjs.json",
-		"build:es2015": "./node_modules/.bin/tsc -P cfg/tsconfig.es2015.json",
-		"build:umd": "mkdir -p dist && rollup -c --name 'be-good' && uglifyjs dist/be-good.js -o dist/be-good.min.js",
-		"prepublish": "npm run build",
-		"preversion": "npm run build",
-		"test": "tsc && jest --watch"
-	},
-	"dependencies": {
-		"lodash": "^4.17.15"
-	},
-	"devDependencies": {
-		"@rollup/plugin-node-resolve": "^7.1.0",
-		"@rollup/plugin-typescript": "^3.0.0",
-		"@types/jest": "^25.1.1",
-		"@types/lodash": "^4.14.149",
-		"jest": "^25.5.4",
-		"prettier": "^1.19.1",
-		"rollup": "^1.31.0",
-		"ts-jest": "^25.4.0",
-		"tslib": "^1.10.0",
-		"typescript": "^3.8.3",
-		"uglify-js": "^3.7.6"
-	}
+  "name": "be-good",
+  "version": "0.2.0",
+  "description": "Simple and flexible data decoding",
+  "author": "hoichi <hi@hoichi.io>",
+  "license": "MIT",
+  "keywords": [
+    "data",
+    "decoder",
+    "decoding",
+    "typechecking",
+    "typescript"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hoichi/be-good.git"
+  },
+  "homepage": "https://github.com/hoichi/be-good.git#readme",
+  "bugs": {
+    "url": "https://github.com/hoichi/be-good.git#readme"
+  },
+  "main": "lib/index.js",
+  "module": "lib.es2015/index.js",
+  "jsnext:main": "lib.es2015/index.js",
+  "typings": "lib/index.d.ts",
+  "files": [
+    "dist",
+    "lib"
+  ],
+  "scripts": {
+    "build": "npm run build:commonjs && npm run build:es2015 && npm run build:umd",
+    "build:commonjs": "./node_modules/.bin/tsc -P cfg/tsconfig.commonjs.json",
+    "build:es2015": "./node_modules/.bin/tsc -P cfg/tsconfig.es2015.json",
+    "build:umd": "mkdir -p dist && rollup -c --name 'be-good' && uglifyjs dist/be-good.js -o dist/be-good.min.js",
+    "prepublishOnly": "npm run build",
+    "preversion": "npm run build",
+    "test": "tsc && jest --watch"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@rollup/plugin-node-resolve": "^7.1.0",
+    "@rollup/plugin-typescript": "^3.0.0",
+    "@types/jest": "^25.1.1",
+    "@types/lodash": "^4.14.149",
+    "jest": "^25.5.4",
+    "lodash": "^4.17.15",
+    "prettier": "^1.19.1",
+    "rollup": "^1.31.0",
+    "ts-jest": "^25.4.0",
+    "tslib": "^1.10.0",
+    "typescript": "^3.8.3",
+    "uglify-js": "^3.7.6"
+  }
 }
