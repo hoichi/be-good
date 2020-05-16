@@ -1,6 +1,16 @@
 import { isNumber, isString } from 'lodash'
 
-import { be, fallback, beArrayOf, beObject, beObjectOf } from './index'
+import {
+  be,
+  beArrayOf,
+  beDictOf,
+  beObject,
+  beObjectOf,
+  fallback
+} from './index'
+
+const beString = be(isString)
+const beNumber = be(isNumber)
 
 test('be', () => {
   expect(be(isNumber)(20)).toBe(20)
@@ -14,8 +24,8 @@ test('be', () => {
 
 test('fallback basics', () => {
   const misdecoder = (_: any) => ({
-    foo: be(isString)('foo'),
-    bar: be(isNumber)('bar')
+    foo: beString('foo'),
+    bar: beNumber('bar')
   })
 
   expect(() => misdecoder(undefined)).toThrow()
@@ -33,52 +43,52 @@ test('beArrayOf: happy path', () => {
 })
 
 test('beArrayOf: not an array', () => {
-  expect(() => beArrayOf(be(isString))(null)).toThrow()
-  expect(() => beArrayOf(be(isString))(77)).toThrow()
-  expect(() => beArrayOf(be(isString))('seventy seventeen')).toThrow()
-  expect(() => beArrayOf(be(isString))(true)).toThrow()
-  expect(() => beArrayOf(be(isString))(false)).toThrow()
-  expect(() => beArrayOf(be(isString))({ a: 'a', b: 'boooooo' })).toThrow()
+  expect(() => beArrayOf(beString)(null)).toThrow()
+  expect(() => beArrayOf(beString)(77)).toThrow()
+  expect(() => beArrayOf(beString)('seventy seventeen')).toThrow()
+  expect(() => beArrayOf(beString)(true)).toThrow()
+  expect(() => beArrayOf(beString)(false)).toThrow()
+  expect(() => beArrayOf(beString)({ a: 'a', b: 'boooooo' })).toThrow()
 })
 
 test('beArrayOf: invalid elements', () => {
-  const elDecoder = be(isString)
-
   // invalidate elements, by default...
-  expect(beArrayOf(elDecoder)(['1', '2', 3])).toStrictEqual(['1', '2'])
-  expect(beArrayOf(elDecoder, {})(['1', '2', 3])).toStrictEqual(['1', '2'])
+  expect(beArrayOf(beString)(['1', '2', 3])).toStrictEqual(['1', '2'])
+  expect(beArrayOf(beString, {})(['1', '2', 3])).toStrictEqual(['1', '2'])
   // ...and explicitly
   expect(
-    beArrayOf(elDecoder, { invalidate: 'element' })(['1', '2', 3])
+    beArrayOf(beString, { invalidate: 'single' })(['1', '2', 3])
   ).toStrictEqual(['1', '2'])
 
   // invalidate the whole array
   expect(() =>
-    beArrayOf(elDecoder, { invalidate: 'array' })(['1', '2', 3])
+    beArrayOf(beString, { invalidate: 'all' })(['1', '2', 3])
   ).toThrow()
 })
 
-test('beArrayOf: min length', () => {
-  const elDecoder = be(isNumber)
-
+test('beDictOf: min size', () => {
   // No lower limit by default
-  expect(beArrayOf(elDecoder)(['1', '2', '3'])).toStrictEqual([])
-  expect(beArrayOf(elDecoder, {})([])).toStrictEqual([])
+  expect(beArrayOf(beNumber)(['1', '2', '3'])).toStrictEqual([])
+  expect(beArrayOf(beNumber, {})([])).toStrictEqual([])
   // ...and explicitly
   expect(
-    beArrayOf(elDecoder, { minLength: 1 })(['1', '2', 3, 4])
+    beArrayOf(beNumber, {
+      minSize: 1
+    })(['1', '2', 3, 4])
   ).toStrictEqual([3, 4])
-  expect(() =>
-    beArrayOf(elDecoder, { minLength: 3 })(['1', '2', 3, 4])
-  ).toThrow()
+  expect(() => beArrayOf(beNumber, { minSize: 3 })(['1', '2', 3, 4])).toThrow()
 
   // invalidating array beats the length limit
   // (not that we’re checking the exact error)
   expect(() =>
-    beArrayOf(elDecoder, { invalidate: 'array', minLength: 1 })(['1', 2, 3])
+    beArrayOf(beNumber, { invalidate: 'all', minSize: 1 })(['1', 2, 3])
   ).toThrow()
+
   expect(() =>
-    beArrayOf(elDecoder, { invalidate: 'array', minLength: 100 })(['1', 3, 4])
+    beArrayOf(beNumber, {
+      invalidate: 'single',
+      minSize: 100
+    })(['1', 3, 4])
   ).toThrow()
 })
 
@@ -178,6 +188,93 @@ test('beObject', () => {
   expect(
     beObject({ name: undefined, surname: 'Johnson', 1: 'yes' })
   ).toStrictEqual({ name: undefined, surname: 'Johnson', 1: 'yes' })
+})
+
+test('beDictOf: happy path', () => {
+  const decoder = beDictOf(<T>(el: T) => el)
+  expect(decoder({ a: 2, b: true, c: 'Cinderella' })).toStrictEqual({
+    a: 2,
+    b: true,
+    c: 'Cinderella'
+  })
+
+  // hmmm... are we sure we need this mess?
+  expect(beDictOf(be(isString))(['a', 'boooooo'])).toStrictEqual({
+    '0': 'a',
+    '1': 'boooooo'
+  })
+})
+
+test('beDictOf: not an object', () => {
+  expect(() => beDictOf(be(isString))(null)).toThrow()
+  expect(() => beDictOf(be(isString))(77)).toThrow()
+  expect(() => beDictOf(be(isString))('seventy seventeen')).toThrow()
+  expect(() => beDictOf(be(isString))(true)).toThrow()
+  expect(() => beDictOf(be(isString))(false)).toThrow()
+})
+
+test('beDictOf: invalid elements', () => {
+  const beString = be(isString)
+  const input = {
+    x: '1',
+    y: '2',
+    z: 3
+  }
+
+  // invalidate elements, by default...
+  expect(beDictOf(beString)(input)).toStrictEqual({ x: '1', y: '2' })
+  expect(beDictOf(beString, {})(input)).toStrictEqual({ x: '1', y: '2' })
+  // ...and explicitly
+  expect(beDictOf(beString, { invalidate: 'single' })(input)).toStrictEqual({
+    x: '1',
+    y: '2'
+  })
+
+  // invalidate the whole dictionary
+  expect(() => beDictOf(beString, { invalidate: 'all' })(input)).toThrow()
+})
+
+test('beDictOf: min length', () => {
+  // No lower limit by default
+  expect(
+    beDictOf(beNumber)({ foo: '1', bar: false, baz: ['3'] })
+  ).toStrictEqual({})
+  expect(beDictOf(beNumber, {})({})).toStrictEqual({})
+
+  // ...and explicitly
+  expect(
+    beDictOf(beNumber, { minSize: 1 })({
+      one: '1',
+      two: '2',
+      three: 3,
+      four: 4
+    })
+  ).toStrictEqual({ three: 3, four: 4 })
+  expect(() =>
+    beDictOf(beNumber, { minSize: 3 })({
+      one: '1',
+      two: '2',
+      three: 3,
+      four: 4
+    })
+  ).toThrow()
+
+  // invalidating array beats the length limit
+  // (not that the test is checking the exact error)
+  expect(() =>
+    beDictOf(beNumber, { invalidate: 'all', minSize: 1 })({
+      a: 'a',
+      two: 2,
+      three: 3
+    })
+  ).toThrow()
+  expect(() =>
+    beDictOf(beNumber, { invalidate: 'all', minSize: 100 })({
+      a: 'a',
+      two: 2,
+      four: 4
+    })
+  ).toThrow()
 })
 
 /*

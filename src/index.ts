@@ -68,15 +68,47 @@ export function beObjectOf<Out>(fieldDecoders: DecodersFor<Out>) {
   }
 }
 
-type BeArrayOptions = {
+export function beDictOf<ElOut>(
+  elDecoder: (el: unknown) => ElOut,
+  { invalidate = 'single', minSize = 0 }: BeCollectionOptions = {}
+) {
+  type DictOut = Record<string, ElOut>
+
+  return function dictDecoder(input: unknown): DictOut {
+    if (!isObject(input)) throw new TypeError('Not an object')
+
+    let result = {} as DictOut
+    let length = 0
+    Object.keys(input).forEach(key => {
+      try {
+        result[key] = elDecoder(input[key])
+        length++
+      } catch (e) {
+        switch (invalidate) {
+          case 'single':
+            break // swallow the error, move on to the next element
+          case 'all':
+            throw TypeError('invalid element')
+        }
+      }
+    })
+
+    if (length < minSize)
+      throw TypeError(`Dic elements count less than ${minSize}`)
+
+    return result
+  }
+}
+
+type BeCollectionOptions = {
   /** What to invalidate on errors */
-  invalidate?: 'element' | 'array'
-  minLength?: number
+  invalidate?: 'single' | 'all'
+  minSize?: number
 }
 
 export function beArrayOf<ElOut>(
   elDecoder: (el: unknown) => ElOut,
-  { invalidate = 'element', minLength = 0 }: BeArrayOptions = {}
+  { invalidate = 'single', minSize = 0 }: BeCollectionOptions = {}
 ) {
   return function arrayDecoder(input: unknown): ElOut[] {
     if (!Array.isArray(input)) throw TypeError('Not an array')
@@ -87,16 +119,16 @@ export function beArrayOf<ElOut>(
         result.push(elDecoder(el))
       } catch (e) {
         switch (invalidate) {
-          case 'element':
+          case 'single':
             break // swallow the error, move on to the next element
-          case 'array':
+          case 'all':
             throw TypeError('invalid element')
         }
       }
     }
 
-    if (result.length < minLength)
-      throw TypeError(`Array length less than ${minLength}`)
+    if (result.length < minSize)
+      throw TypeError(`Array length less than ${minSize}`)
 
     return result
   }
