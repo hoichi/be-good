@@ -124,16 +124,8 @@ test('beObjectOf: not an object', () => {
   expect(() => personDecoder('seventy seventeen')).toThrow()
   expect(() => personDecoder(true)).toThrow()
   expect(() => personDecoder(false)).toThrow()
-
-  // array _is_ an object (if you’re brave enough)
-  const arr = [1, 2, 'five', { true: false }]
-  // @ts-ignore
-  arr.name = 'Joe'
-  // @ts-ignore
-  arr.age = 33
-  expect(Array.isArray(arr)).toBe(true)
-  expect(personDecoder(arr)).toStrictEqual({ name: 'Joe', age: 33 })
   expect(() => personDecoder([])).toThrow()
+  expect(() => personDecoder([1, 2, 3])).toThrow()
 })
 
 test('beObjectOf: field decoding failure', () => {
@@ -197,12 +189,6 @@ test('beDictOf: happy path', () => {
     b: true,
     c: 'Cinderella'
   })
-
-  // hmmm... are we sure we need this mess?
-  expect(beDictOf(be(isString))(['a', 'boooooo'])).toStrictEqual({
-    '0': 'a',
-    '1': 'boooooo'
-  })
 })
 
 test('beDictOf: not an object', () => {
@@ -211,6 +197,7 @@ test('beDictOf: not an object', () => {
   expect(() => beDictOf(be(isString))('seventy seventeen')).toThrow()
   expect(() => beDictOf(be(isString))(true)).toThrow()
   expect(() => beDictOf(be(isString))(false)).toThrow()
+  expect(() => beDictOf(be(isString))([1, 'two', false])).toThrow()
 })
 
 test('beDictOf: invalid elements', () => {

@@ -140,7 +140,7 @@ function printValueInfo(value: any) {
 }
 
 function isObject(value: unknown): value is Record<string, unknown> {
-  return !!value && typeof value === 'object'
+  return value != null && typeof value === 'object' && !Array.isArray(value)
   // Unlike lodash, we consider typeof value === 'function' a negative
   // (getting a function after deserialization is probably a bug anyway)
 }
