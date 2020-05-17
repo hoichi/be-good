@@ -6,7 +6,8 @@ import {
   beDictOf,
   beObject,
   beObjectOf,
-  fallback
+  fallback,
+  or
 } from './index'
 
 const beString = be(isString)

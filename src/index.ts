@@ -40,6 +40,8 @@ export function fallback<Fb>(fallbackVal: Fb) {
   }
 }
 
+export const or = fallback
+
 /**
  * Just returns an object, if it’s an object. Doesn’t decode fields or anything.
  * Useful because...
