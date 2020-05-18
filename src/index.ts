@@ -1,9 +1,11 @@
 /**
  * The base for the whole library. Applies a predicate to the value.
  * If the predicate yields true, returns the value as is. Otherwise, throws.
- * @param predicate {(a: any) => a is T}. As you can see, the predicate should
- * @param input {unknown} The value itself.
- * assert a type
+ * @param {any => a is T} predicate. As you can see, the predicate
+ * should be a user defined type guard (i.e. return `a is Foo`, not just
+ * boolean).
+ * @return {unknown => T} decoder. A decoder function that either
+ * returns a value of type T or throws
  */
 export function be<T>(predicate: (a: any) => a is T): (u: unknown) => T {
   return function decoder(input: unknown | T): T {
@@ -15,12 +17,12 @@ export function be<T>(predicate: (a: any) => a is T): (u: unknown) => T {
 }
 
 /**
- * Runs a decoding function, and if all the validations succeed, returns
- * the value. If something fails, falls back to another value (and optionally
- * logs the error).
- * @param fallbackVal {Fb} The fallback value (probably different from T)
- * @return decorator {(In => Out) => In => Out | Fb} The same decoder that,
- * instead of throwing, returns a fallback value
+ * Given a fallback value, returns a decorator for decoder functions. The
+ * decorator wraps a decoder function in a try/catch, and if the decoder
+ * throws on invalid input, returns a fallback value instead.
+ * @param {Fb} fallbackVal. The fallback value. Can be different from T:
+ * nullish values are likely candidates.
+ * @return {(In => Out) => In => Out | Fb} decorator.
  */
 export function fallback<Fb>(fallbackVal: Fb) {
   return function decorator<In, Out>(decoder: (data: In) => Out) {
@@ -31,8 +33,7 @@ export function fallback<Fb>(fallbackVal: Fb) {
         /*
           If we ever add a custom error, we should replace all the
           `new TypeError` invocations. But frankly, why not catch all
-          exceptions indiscriminately, even those not foreseen
-          by a programmer.
+          exceptions indiscriminately, even those we didn't throw on purpose.
         */
         return fallbackVal
       }
@@ -40,19 +41,41 @@ export function fallback<Fb>(fallbackVal: Fb) {
   }
 }
 
+/**
+ * An alias for fallback
+ */
 export const or = fallback
 
 /**
- * Just returns an object, if it’s an object. Doesn’t decode fields or anything.
- * Useful because...
- * @returns an object typed as {Re== 'stricord<string, unknown>}
+ * Returns its input, if the input is an object. Doesn’t decode fields or
+ * anything. Its result type makes it useful for destructuring and further
+ * decoding.
+ * For most of your object decoding needs though, you probably want either
+ * `beObjectOf` or `beDictOf`
+ * @returns {Record<string, unknown>}
  */
 export const beObject = be(isObject)
 
+/**
+ * An object of field decoders for a given output shape
+ * E.g., DecodersFor<{ a: string, b: number }> equals to
+ * { a: unknown => string, b: unknown => number }
+ */
 type DecodersFor<T> = {
   [P in keyof T]: (field: unknown) => T[P]
 }
 
+/**
+ * Given an object where every property is a decoder, returns an object
+ * decoder that:
+ * 1. Checks if its input is an object
+ * 2. For every property decoder, tries to get a corresponding property of input
+ * and applies that decoder to its value.
+ * If a property decoder throws (e.g., if you didn’t wrap it with `or`), that
+ * means the property was required, so the whole object is invalidated.
+ * @param {DecodersFor<Out>} fieldDecoders
+ * @return {unknown => Out} an object decoder
+ */
 export function beObjectOf<Out>(fieldDecoders: DecodersFor<Out>) {
   type K = keyof Out
 
@@ -70,6 +93,28 @@ export function beObjectOf<Out>(fieldDecoders: DecodersFor<Out>) {
   }
 }
 
+/**
+ * Options for array/dictionary decoders
+ */
+type BeCollectionOptions = {
+  /** What to invalidate on errors */
+  invalidate?: 'single' | 'all'
+  /** Minimum count of (valid) collection elements */
+  minSize?: number
+}
+
+/**
+ * Returns a dictionary decoder that
+ * 1. Checks if it input is an object
+ * 2. Runs an element decoder on every object property.
+ * Depending on the options, an invalid element is either simply not
+ * included in the resulting dictionary, or invalidates the whole result.
+ * @param {unknown => ElOut} elDecoder. Either returns a value of ElOut or
+ * throws
+ * @param {BeCollectionOptions} [options]
+ * @returns {unknown => Record<string, ElOut>} A decoder that either returns
+ * a dictionary of valid elements, or throws
+ */
 export function beDictOf<ElOut>(
   elDecoder: (el: unknown) => ElOut,
   { invalidate = 'single', minSize = 0 }: BeCollectionOptions = {}
@@ -102,12 +147,18 @@ export function beDictOf<ElOut>(
   }
 }
 
-type BeCollectionOptions = {
-  /** What to invalidate on errors */
-  invalidate?: 'single' | 'all'
-  minSize?: number
-}
-
+/**
+ * Returns an array decoder that
+ * 1. Checks if it input is an array
+ * 2. Runs an element decoder on every array element.
+ * Depending on the options, an invalid element is either simply not
+ * included in the resulting array, or invalidates the whole result.
+ * @param {unknown => ElOut} elDecoder. Either returns a value of ElOut or
+ * throws
+ * @param {BeCollectionOptions} [options]
+ * @returns {unknown => ElOut[]} A decoder that either returns
+ * an array of valid elements, or throws
+ */
 export function beArrayOf<ElOut>(
   elDecoder: (el: unknown) => ElOut,
   { invalidate = 'single', minSize = 0 }: BeCollectionOptions = {}
@@ -143,6 +194,12 @@ function printValueInfo(value: any) {
 
 function isObject(value: unknown): value is Record<string, unknown> {
   return value != null && typeof value === 'object' && !Array.isArray(value)
-  // Unlike lodash, we consider typeof value === 'function' a negative
-  // (getting a function after deserialization is probably a bug anyway)
+  /*
+    Unlike, say, lodash, we consider typeof value === 'function' a negative
+    (getting a function after deserialization is probably a bug anyway)
+
+    Arrays are a negative too. Technically, you can add string keys to an
+    array, but it shouldn’t happen to serialized data, and Object.keys
+    converting indexes to strings is more harm than help.
+  */
 }
