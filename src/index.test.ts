@@ -1,14 +1,7 @@
 import { isNumber, isString } from 'lodash'
+import { get, pipe } from 'lodash/fp'
 
-import {
-  be,
-  beArrayOf,
-  beDictOf,
-  beObject,
-  beObjectOf,
-  fallback,
-  or
-} from './index'
+import { be, beArrayOf, beDictOf, beObject, beObjectOf, or } from './index'
 
 const beString = be(isString)
 const beNumber = be(isNumber)
@@ -30,7 +23,7 @@ test('fallback basics', () => {
   })
 
   expect(() => misdecoder(undefined)).toThrow()
-  const decoderWithFallback = fallback('fallen supine')(misdecoder)
+  const decoderWithFallback = or('fallen supine')(misdecoder)
   expect(decoderWithFallback(undefined)).toBe('fallen supine')
 })
 
@@ -164,7 +157,7 @@ test('beObjectOf: fallback', () => {
   expect(
     beObjectOf({
       name: be(isString),
-      age: fallback(0)(be(isString))
+      age: or(0)(be(isString))
     })(bob)
   ).toStrictEqual({ name: 'Bob', age: 0 })
 })
@@ -265,71 +258,58 @@ test('beDictOf: min length', () => {
   ).toThrow()
 })
 
-/*
-test('decode: successful nested array', () => {
+test('composability', () => {
+  const decoderRequired = pipe(get('disclaimer'), beString)
+  const decoderOptional = or(null)(pipe(get('disclaimer'), beString))
+
+  // todo: figure out types for the following usages
+  // if the `pipe` signature allows parametrizing the decorator generic at all
+  const decoderOptional2 = pipe(get('disclaimer'), beString, or(null))
+  const decoderOptional3 = pipe(decoderRequired, or(null))
+
+  const disclaimer = 'Must is a four-letter word'
+  expect(decoderOptional({ disclaimer })).toBe(disclaimer)
+  expect(decoderRequired({ disclaimer })).toBe(disclaimer)
+
+  expect(decoderOptional({ disclaimer: 7 })).toBe(null)
+  expect(() => decoderRequired({ disclaimer: 7 })).toThrow()
+
+  expect(decoderOptional({ thisClaymor: disclaimer })).toBe(null)
+  expect(() => decoderRequired({ thisClaymor: disclaimer })).toThrow()
+
+  expect(decoderOptional('...')).toBe(null)
+  expect(() => decoderRequired('...')).toThrow()
+})
+
+test('advanced recipes: nested structures', () => {
+  const obj = {
+    id: 3,
+    animals: ['Cat', 'Dog', 'Siren'],
+    artists: [
+      { name: 'Alice', albums: 27 },
+      { name: 'Bob', albums: 39 }
+    ],
+    astronomicalInstruments: {
+      Alidade: 'https://en.wikipedia.org/wiki/Alidade',
+      'Armillary sphere': 'https://en.wikipedia.org/wiki/Armillary_sphere',
+      Astrarium: 'https://en.wikipedia.org/wiki/Astrarium',
+      Astrolabe: 'https://en.wikipedia.org/wiki/Astrolabe'
+    }
+  }
+
   expect(
-    decode(
-      { id: 3, animals: ['Cat', 'Dog', 'Siren'] },
-      input => ({
-        id: be(input.id, isNumber, 'Id should be a number'),
-        animalNames: decodeArray(
-          input.animals,
-          makeDecoder(
-            isString,
-            'animal should have strings of characters as their names'
-          ),
-          null
-        )
-      }),
-      null
-    )
-  ).toStrictEqual({ id: 3, animalNames: ['Cat', 'Dog', 'Siren'] })
+    beObjectOf({
+      id: beNumber,
+      animals: beArrayOf(beString),
+      artists: beArrayOf(
+        beObjectOf({
+          name: beString,
+          albums: beNumber
+        })
+      ),
+      astronomicalInstruments: beDictOf(beString)
+    })(obj)
+  ).toStrictEqual(obj)
 })
 
-test('decodeObject: wrong member, fallback', () => {
-  expect(
-    decodeObject(
-      {
-        foo: 'foo',
-        bar: 4
-      },
-      obj => ({
-        foo: be(obj.foo, isString, 'foo should be a string'),
-        bar: be(obj.bar, isString, 'bar should be a string')
-      }),
-      null
-    )
-  ).toBe(null)
-})
-
-test('decodeObject: wrong member, throw', () => {
-  expect(() =>
-    decodeObject(
-      {
-        foo: 'foo',
-        bar: 4
-      },
-      obj => ({
-        foo: be(obj.foo, isString, 'foo should be a string'),
-        bar: be(obj.bar, isString, 'bar should be a string')
-      }),
-      null,
-      { onFailure: 'propagate' }
-    )
-  ).toThrow('bar should be a string')
-})
-
-test('decodeObject: not an object, throw', () => {
-  expect(() =>
-    decodeObject(
-      '{{-}}',
-      obj => ({
-        foo: be(obj.foo, isString, 'foo should be a string'),
-        bar: be(obj.bar, isString, 'bar should be a string')
-      }),
-      null,
-      { onFailure: 'propagate', notAnObjectErrMsg: 'You call that an object?' }
-    )
-  ).toThrow('You call that an object?')
-})
-*/
+test.todo('advanced stuff: nested fallbacks')

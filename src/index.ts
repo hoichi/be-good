@@ -24,7 +24,7 @@ export function be<T>(predicate: (a: any) => a is T): (u: unknown) => T {
  * nullish values are likely candidates.
  * @return {(In => Out) => In => Out | Fb} decorator.
  */
-export function fallback<Fb>(fallbackVal: Fb) {
+export function or<Fb>(fallbackVal: Fb) {
   return function decorator<In, Out>(decoder: (data: In) => Out) {
     return function decoratedDecoder(input: In): Out | Fb {
       try {
@@ -40,11 +40,6 @@ export function fallback<Fb>(fallbackVal: Fb) {
     }
   }
 }
-
-/**
- * An alias for fallback
- */
-export const or = fallback
 
 /**
  * Returns its input, if the input is an object. Doesn’t decode fields or
