@@ -312,4 +312,35 @@ test('advanced recipes: nested structures', () => {
   ).toStrictEqual(obj)
 })
 
-test.todo('advanced stuff: nested fallbacks')
+test('advanced stuff: nested fallbacks', () => {
+  const artists = [
+    { name: 'Alice', albums: 27 },
+    { name: 'Bob', albums: 39 },
+    { name: 'Chuck' }
+  ]
+
+  const input = {
+    animals: ['Cat', 'Dog', 'Siren', 7 * 1.3],
+    artistsOptArray: artists,
+    artistsOptEl: artists
+  }
+
+  const optional = or('<NULL>')
+  const beArtist = beObjectOf({ name: beString, albums: beNumber })
+
+  expect(
+    beObjectOf({
+      animals: beArrayOf(beString, { invalidate: 'single' }),
+      artistsOptArray: optional(beArrayOf(beArtist, { invalidate: 'all' })),
+      artistsOptEl: optional(beArrayOf(optional(beArtist)))
+    })(input)
+  ).toStrictEqual({
+    animals: ['Cat', 'Dog', 'Siren'],
+    artistsOptArray: '<NULL>',
+    artistsOptEl: [
+      { name: 'Alice', albums: 27 },
+      { name: 'Bob', albums: 39 },
+      '<NULL>'
+    ]
+  })
+})
