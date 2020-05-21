@@ -1,3 +1,5 @@
+export type Decoder<T> = (input: unknown) => T
+
 /**
  * The base for the whole library. Applies a predicate to the value.
  * If the predicate yields true, returns the value as is. Otherwise, throws.
@@ -7,8 +9,8 @@
  * @return {unknown => T} decoder. A decoder function that either
  * returns a value of type T or throws
  */
-export function be<T>(predicate: (a: any) => a is T): (u: unknown) => T {
-  return function decoder(input: unknown | T): T {
+export function be<T>(predicate: (a: any) => a is T): Decoder<T> {
+  return function decoder(input: unknown): T {
     if (!predicate(input))
       throw TypeError(`assertion failed on ${printValueInfo(input)}`)
 
@@ -155,7 +157,7 @@ export function beDictOf<ElOut>(
  * an array of valid elements, or throws
  */
 export function beArrayOf<ElOut>(
-  elDecoder: (el: unknown) => ElOut,
+  elDecoder: Decoder<ElOut>,
   { invalidate = 'single', minSize = 0 }: BeCollectionOptions = {}
 ) {
   return function arrayDecoder(input: unknown): ElOut[] {
