@@ -344,3 +344,19 @@ test('advanced stuff: nested fallbacks', () => {
     ]
   })
 })
+
+test('custom predicates', () => {
+  enum EvenNumBrand {}
+  type EvenNum = number & EvenNumBrand
+  const isEven = (n: unknown): n is EvenNum => isNumber(n) && n % 2 === 0
+  const beEven = be(isEven)
+
+  expect(beEven(0)).toBe(0)
+  expect(beEven(-14)).toBe(-14)
+  expect(beEven(72)).toBe(72)
+  expect(() => beEven(7)).toThrow()
+  expect(() => beEven(0.4)).toThrow()
+  expect(() => beEven(-11)).toThrow()
+
+  const evenZ = beEven(0)
+})

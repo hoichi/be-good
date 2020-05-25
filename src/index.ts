@@ -11,8 +11,7 @@ export type Decoder<T> = (input: unknown) => T
  */
 export function be<T>(predicate: (a: any) => a is T): Decoder<T> {
   return function decoder(input: unknown): T {
-    if (!predicate(input))
-      throw TypeError(`assertion failed on ${printValueInfo(input)}`)
+    if (!predicate(input)) fail(`assertion failed on ${printValueInfo(input)}`)
 
     return input
   }
@@ -132,13 +131,12 @@ export function beDictOf<ElOut>(
           case 'single':
             break // swallow the error, move on to the next element
           case 'all':
-            throw TypeError('invalid element')
+            fail('invalid element')
         }
       }
     })
 
-    if (length < minSize)
-      throw TypeError(`Dic elements count less than ${minSize}`)
+    if (length < minSize) fail(`Dic elements count less than ${minSize}`)
 
     return result
   }
@@ -161,7 +159,7 @@ export function beArrayOf<ElOut>(
   { invalidate = 'single', minSize = 0 }: BeCollectionOptions = {}
 ) {
   return function arrayDecoder(input: unknown): ElOut[] {
-    if (!Array.isArray(input)) throw TypeError('Not an array')
+    if (!Array.isArray(input)) fail('Not an array')
 
     const result = []
     for (const el of input as unknown[]) {
@@ -172,16 +170,26 @@ export function beArrayOf<ElOut>(
           case 'single':
             break // swallow the error, move on to the next element
           case 'all':
-            throw TypeError('invalid element')
+            fail('invalid element')
         }
       }
     }
 
-    if (result.length < minSize)
-      throw TypeError(`Array length less than ${minSize}`)
+    if (result.length < minSize) fail(`Array length less than ${minSize}`)
 
     return result
   }
+}
+
+/**
+ * Fails a decoder inside which it is called. Useful for custom decoders.
+ * The API is undecided upon, but using `fail` is still more future-proof
+ * than simply throwing.
+ * @param {string} [message] An error message
+ * @returns {never}. Literally, never, ever returns.
+ */
+export function fail(message?: string, _value?: any): never {
+  throw TypeError(message)
 }
 
 function printValueInfo(value: any) {
