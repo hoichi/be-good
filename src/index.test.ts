@@ -357,6 +357,15 @@ test('custom predicates', () => {
   expect(() => beEven(7)).toThrow()
   expect(() => beEven(0.4)).toThrow()
   expect(() => beEven(-11)).toThrow()
+})
 
-  const evenZ = beEven(0)
+const beIn = <U>(values: U[]) =>
+  be((x: unknown): x is U => !!~values.indexOf(x as U))
+
+test('beTrial', () => {
+  const beTrial = beIn<TrialStartResult>(['started', 'error'])
+  type TrialStartResult = 'started' | 'error' | 'fugue'
+
+  expect(beTrial('error')).toBe('error')
+  expect(() => beTrial(-11)).toThrow()
 })
