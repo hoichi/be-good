@@ -28,7 +28,7 @@ npm i -S be-good
 
 ### Basics: be
 
-The basest building block is the `be` fabric:
+The basest building block is the `be` factory:
 
 ```ts
 import isString from 'lodash/isString'
@@ -185,7 +185,7 @@ Fail early, I say.
 
 `beArrayOf` and `beDictOf` are similar to `beObjectOf`, but their parameters
 are a bit different. First, they take a single element decoder—meaning all
-the elements are supposed to be of the same type. Second, the fabric has
+the elements are supposed to be of the same type. Second, the factory has
 some other options:
 
 ```ts
@@ -285,6 +285,6 @@ the abstraction.
 ## Todos
 
 - [x] `beDictOf`
-- [ ] proper Readme
-- [ ] decoding sum types (discriminated unions)
+- [x] proper Readme
+- [ ] decoding sum types ([discriminated] unions)
 - [ ] more examples
